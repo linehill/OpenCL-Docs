@@ -201,6 +201,10 @@ typedef struct cl_dbk_attributes_leaky_relu_exp {
    cl_tensor_datatype_union_exp   coefficient;
    cl_dbk_properties_exp          kernel_props[CL_MAX_DBK_PROPERTIES];
 } cl_dbk_attributes_leaky_relu_exp;
+
+typedef cl_dbk_attributes_onnx_exp {
+  cl_mem                          model;
+} cl_dbk_attributes_onnx_exp;
 ----
 
 == New API Enums
@@ -212,6 +216,7 @@ Accepted values to *cl_dbk_id_exp*:
 CL_DBK_MATMUL_EXP      0x????
 CL_DBK_GEMM_EXP        0x????
 CL_DBK_LEAKY_RELU_EXP  0x????
+CL_DBK_ONNX_EXP        0x????
 ----
 
 accepted values to *cl_dbk_properties_exp*:
@@ -383,6 +388,18 @@ kernels.
 --
 // End (Modify section 5.10, *Executing Kernels*)
 
+(Modify section 5.9.2, *Setting Kernel Arguments*) ::
++
+--
+
+(Add the following to the list of error codes returned by *clSetKernelArg*) ::
++
+--
+
+* *CL_INVALID_VALUE* if the argument at _arg_index_ is a cl_tensor and _arg_value_ refers to a cl_tensor with different dimensions or data type.
+--
+--
+// End (Modify section 5.9.2, *Setting Kernel Arguments*)
 
 [[appendix-dbk]]
 === Add new appendix "Defined Built-in Kernels" to OpenCL API Specification
@@ -711,6 +728,65 @@ a|
 * `shapeof(in) == shapeof(out)`.
 * `elementof(in) == elementof(out)`.
 * `coefficient` must be a positive, finite value.
+|
+
+| Name: *CL_DBK_ONNX_INFERENCE_DBK*
+| *Kernel Attributes*
+a|
+
+[source,c]
+----
+typedef struct cl_dbk_attributes_onnx_inference_exp {
+    char *model_data;
+    size_t model_size;
+
+    size_t num_inputs;
+    char **input_tensor_names;
+    cl_tensor_desc *input_tensor_descs;
+
+    size_t num_outputs;
+    char **output_tensor_names;
+    cl_tensor_desc *output_tensor_descs;
+
+    size_t num_initializers;
+    char **initializer_names;
+    cl_tensor_desc *initializer_tensor_descs;
+    char **initializer_data;
+} cl_dbk_attributes_onnx_inference_exp;
+----
+|
+| *Kernel arguments*
+a|
+. uint64_t*: offsets of the input tensors in the input data buffer
+. cl_mem: buffer holding the input values
+. uint64_t*: offsets of output tensors in the output buffer
+. cl_mem: output buffer
+| *Description*
+a|
+
+This kernel loads an ONNX model from the given cl_mem time and
+runs a single inference round with it per enqueued instance.
+
+The order of the input and output tensors in the name and tensor descriptor
+arrays in the kernel attributes MUST be the same.
+
+Similarly the number of input and output tensors in the kernel arguments MUST
+match the number given in the kernel attributes and the order MUST match that
+of the respective tensor names array.
+
+User-specified initializers are only required if the model does not contain
+initializers. If the model contains initializers, user-specified values will
+override them. If num_initializers is zero, initializer_names,
+initializer_tensor_descs and initializer_data all shall be NULL. Initializers
+MUST be given in the same order in each of the initializer_names,
+initializer_tensor_desc and initializer_data arrays.
+
+| *Kernel mode properties*
+| This DBK accepts the following kernel properties:
+a|
+| *Attribute validation rules*
+a|
+
 |===
 
 ==== Launching DBKs from the Device Side
